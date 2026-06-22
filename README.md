@@ -108,6 +108,29 @@ alter table agendamentos add column if not exists status text not null default '
 (Essa linha também está no final do `supabase-setup.sql` atualizado, na
 seção marcada como "MIGRAÇÃO".)
 
+## Campos completos do cadastro de aluno
+
+O cadastro de aluno agora tem: Nome, Curso, Faculdade, Período, Contrato,
+Telefone, Horário, Convidados, Pet, Confirmado e Observação. Esses campos
+aparecem tanto no formulário manual quanto na planilha de importação (o
+modelo atualizado tem essas colunas em letra maiúscula: NOME, CURSO,
+FACULDADE, PERÍODO, CONTRATO, TELEFONE, HORÁRIO, CONVIDADOS, PET,
+CONFIRMADO, OBSERVAÇÃO). Apenas Nome é obrigatório.
+
+**Se você já tinha o Supabase configurado antes desta atualização**, rode
+no SQL Editor (já está incluído no final do `supabase-setup.sql`):
+```sql
+alter table alunos add column if not exists faculdade text;
+alter table alunos add column if not exists periodo text;
+alter table alunos add column if not exists contrato text;
+alter table alunos add column if not exists telefone text;
+alter table alunos add column if not exists horario text;
+alter table alunos add column if not exists convidados text;
+alter table alunos add column if not exists pet text;
+alter table alunos add column if not exists confirmado text;
+alter table alunos add column if not exists observacao text;
+```
+
 ## Senha de administrador
 
 O painel de controle (`index.html`) agora pede uma senha antes de mostrar

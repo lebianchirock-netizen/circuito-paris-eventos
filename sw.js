@@ -1,4 +1,4 @@
-const CACHE_NAME = 'circuito-cache-v10';
+const CACHE_NAME = 'circuito-cache-v11';
 const ASSETS = [
   './',
   './index.html',

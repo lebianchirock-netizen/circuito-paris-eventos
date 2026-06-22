@@ -10,7 +10,16 @@ create table if not exists cenarios (
 create table if not exists alunos (
   id text primary key,
   nome text not null,
-  curso text
+  curso text,
+  faculdade text,
+  periodo text,
+  contrato text,
+  telefone text,
+  horario text,
+  convidados text,
+  pet text,
+  confirmado text,
+  observacao text
 );
 
 create table if not exists agendamentos (
@@ -61,4 +70,14 @@ alter publication supabase_realtime add table
 -- existentes, então é preciso este comando separado:
 -- ============================================================
 alter table agendamentos add column if not exists status text not null default 'aguardando';
+
+alter table alunos add column if not exists faculdade text;
+alter table alunos add column if not exists periodo text;
+alter table alunos add column if not exists contrato text;
+alter table alunos add column if not exists telefone text;
+alter table alunos add column if not exists horario text;
+alter table alunos add column if not exists convidados text;
+alter table alunos add column if not exists pet text;
+alter table alunos add column if not exists confirmado text;
+alter table alunos add column if not exists observacao text;
 

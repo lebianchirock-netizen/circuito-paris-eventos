@@ -40,8 +40,18 @@ const MAPPERS = {
     fromRow: (r) => ({ id: r.id, nome: r.nome, duracaoMin: r.duracao_min })
   },
   alunos: {
-    toRow: (o) => ({ id: o.id, nome: o.nome, curso: o.curso || '' }),
-    fromRow: (r) => ({ id: r.id, nome: r.nome, curso: r.curso })
+    toRow: (o) => ({
+      id: o.id, nome: o.nome, curso: o.curso || '',
+      faculdade: o.faculdade || '', periodo: o.periodo || '', contrato: o.contrato || '',
+      telefone: o.telefone || '', horario: o.horario || '', convidados: o.convidados || '',
+      pet: o.pet || '', confirmado: o.confirmado || '', observacao: o.observacao || ''
+    }),
+    fromRow: (r) => ({
+      id: r.id, nome: r.nome, curso: r.curso,
+      faculdade: r.faculdade, periodo: r.periodo, contrato: r.contrato,
+      telefone: r.telefone, horario: r.horario, convidados: r.convidados,
+      pet: r.pet, confirmado: r.confirmado, observacao: r.observacao
+    })
   },
   agendamentos: {
     toRow: (o) => ({ id: o.id, aluno_id: o.alunoId, cenario_inicial_id: o.cenarioInicialId, horario: o.horario, chegou: !!o.chegou, hora_chegada: o.horaChegada || null, status: o.status || 'aguardando' }),

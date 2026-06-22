@@ -68,14 +68,31 @@ function renderCenarios() {
 document.getElementById('form-aluno').addEventListener('submit', (e) => {
   e.preventDefault();
   const nome = document.getElementById('aluno-nome').value.trim();
-  const curso = document.getElementById('aluno-curso').value.trim();
   if (!nome) return;
   const alunos = Store.getAlunos();
-  alunos.push({ id: Store.uid(), nome, curso });
+  alunos.push({
+    id: Store.uid(),
+    nome,
+    curso: document.getElementById('aluno-curso').value.trim(),
+    faculdade: document.getElementById('aluno-faculdade').value.trim(),
+    periodo: document.getElementById('aluno-periodo').value.trim(),
+    contrato: document.getElementById('aluno-contrato').value.trim(),
+    telefone: document.getElementById('aluno-telefone').value.trim(),
+    horario: document.getElementById('aluno-horario').value.trim(),
+    convidados: document.getElementById('aluno-convidados').value.trim(),
+    pet: document.getElementById('aluno-pet').value,
+    confirmado: document.getElementById('aluno-confirmado').value,
+    observacao: document.getElementById('aluno-observacao').value.trim()
+  });
   Store.setAlunos(alunos);
   e.target.reset();
   renderAll();
 });
+
+function campoInfo(label, valor) {
+  if (!valor) return '';
+  return `<span style="margin-right:14px;"><span style="color:var(--text-faint);">${label}:</span> ${escapeHtml(valor)}</span>`;
+}
 
 function renderAlunos() {
   const alunos = Store.getAlunos();
@@ -84,14 +101,21 @@ function renderAlunos() {
     el.innerHTML = '<div class="empty-state">Nenhum aluno cadastrado ainda.</div>';
     return;
   }
-  el.innerHTML = '<div class="card">' + alunos.map((a) => `
-    <div class="list-row">
-      <div>
-        <div style="font-weight:500;">${escapeHtml(a.nome)}</div>
-        <div class="hint" style="margin:0;">${escapeHtml(a.curso || 'sem curso/turma')}</div>
+  el.innerHTML = alunos.map((a) => `
+    <div class="card" style="margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="font-weight:600;">${escapeHtml(a.nome)}</span>
+          ${a.confirmado === 'Sim' ? '<span class="badge ok">Confirmado</span>' : ''}
+          ${a.confirmado === 'Não' ? '<span class="badge warn">Não confirmado</span>' : ''}
+        </div>
+        <button class="danger-btn" data-id="${a.id}" data-action="del-aluno">Remover</button>
       </div>
-      <button class="danger-btn" data-id="${a.id}" data-action="del-aluno">Remover</button>
-    </div>`).join('') + '</div>';
+      <div class="hint" style="margin:0;line-height:1.8;">
+        ${campoInfo('Curso', a.curso)}${campoInfo('Faculdade', a.faculdade)}${campoInfo('Período', a.periodo)}${campoInfo('Contrato', a.contrato)}${campoInfo('Telefone', a.telefone)}${campoInfo('Horário', a.horario)}${campoInfo('Convidados', a.convidados)}${campoInfo('Pet', a.pet)}
+        ${a.observacao ? `<div style="margin-top:4px;font-style:italic;">${escapeHtml(a.observacao)}</div>` : ''}
+      </div>
+    </div>`).join('');
 }
 
 // Importação da planilha (modelo .xlsx de alunos e cursos)
@@ -110,12 +134,25 @@ document.getElementById('import-file').addEventListener('change', async (e) => {
     let ignorados = 0;
 
     rows.forEach((row) => {
-      const nome = String(row['Nome do aluno'] || '').trim();
-      const curso = String(row['Curso/Turma'] || '').trim();
+      const nome = String(row['NOME'] || row['Nome do aluno'] || '').trim();
+      const curso = String(row['CURSO'] || row['Curso/Turma'] || '').trim();
       if (!nome) { ignorados++; return; }
       const jaExiste = alunos.some((a) => a.nome.toLowerCase() === nome.toLowerCase() && a.curso === curso);
       if (jaExiste) { ignorados++; return; }
-      alunos.push({ id: Store.uid(), nome, curso });
+      alunos.push({
+        id: Store.uid(),
+        nome,
+        curso,
+        faculdade: String(row['FACULDADE'] || '').trim(),
+        periodo: String(row['PERÍODO'] || row['PERIODO'] || '').trim(),
+        contrato: String(row['CONTRATO'] || '').trim(),
+        telefone: String(row['TELEFONE'] || '').trim(),
+        horario: String(row['HORÁRIO'] || row['HORARIO'] || '').trim(),
+        convidados: String(row['CONVIDADOS'] || '').trim(),
+        pet: String(row['PET'] || '').trim(),
+        confirmado: String(row['CONFIRMADO'] || '').trim(),
+        observacao: String(row['OBSERVAÇÃO'] || row['OBSERVACAO'] || '').trim()
+      });
       novos++;
     });
 
