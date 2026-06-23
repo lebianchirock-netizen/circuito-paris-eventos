@@ -118,7 +118,22 @@ function renderAlunos() {
     </div>`).join('');
 }
 
-// Importação da planilha (modelo .xlsx de alunos e cursos)
+// Converte célula de horário do Excel (pode vir como número decimal, texto ou já HH:MM) para "HH:MM"
+function excelTimeToHHMM(value) {
+  if (value === null || value === undefined || value === '') return '';
+  if (typeof value === 'number') {
+    const totalMinutos = Math.round((value % 1) * 24 * 60);
+    const h = Math.floor(totalMinutos / 60) % 24;
+    const m = totalMinutos % 60;
+    return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+  }
+  const str = String(value).trim();
+  const match = str.match(/^(\d{1,2}):(\d{2})/);
+  if (match) return match[1].padStart(2, '0') + ':' + match[2];
+  return str;
+}
+
+// Importação da planilha (modelo .xlsx de alunos)
 document.getElementById('import-file').addEventListener('change', async (e) => {
   const file = e.target.files[0];
   if (!file) return;
@@ -130,8 +145,14 @@ document.getElementById('import-file').addEventListener('change', async (e) => {
     const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: '' });
 
     const alunos = Store.getAlunos();
+    const cenarios = Store.getCenarios();
+    const agendamentos = Store.getAgendamentos();
+    const jaAgendado = new Set(agendamentos.map((ag) => ag.alunoId));
+
     let novos = 0;
     let ignorados = 0;
+    let agendados = 0;
+    let cicloCenario = 0;
 
     rows.forEach((row) => {
       const nome = String(row['NOME'] || row['Nome do aluno'] || '').trim();
@@ -139,7 +160,8 @@ document.getElementById('import-file').addEventListener('change', async (e) => {
       if (!nome) { ignorados++; return; }
       const jaExiste = alunos.some((a) => a.nome.toLowerCase() === nome.toLowerCase() && a.curso === curso);
       if (jaExiste) { ignorados++; return; }
-      alunos.push({
+
+      const novoAluno = {
         id: Store.uid(),
         nome,
         curso,
@@ -147,18 +169,42 @@ document.getElementById('import-file').addEventListener('change', async (e) => {
         periodo: String(row['PERÍODO'] || row['PERIODO'] || '').trim(),
         contrato: String(row['CONTRATO'] || '').trim(),
         telefone: String(row['TELEFONE'] || '').trim(),
-        horario: String(row['HORÁRIO'] || row['HORARIO'] || '').trim(),
+        horario: excelTimeToHHMM(row['HORÁRIO'] || row['HORARIO']),
         convidados: String(row['CONVIDADOS'] || '').trim(),
         pet: String(row['PET'] || '').trim(),
         confirmado: String(row['CONFIRMADO'] || '').trim(),
         observacao: String(row['OBSERVAÇÃO'] || row['OBSERVACAO'] || '').trim()
-      });
+      };
+      alunos.push(novoAluno);
       novos++;
+
+      // Agenda automática: se tem horário e ainda não está agendado, cria a entrada na Agenda
+      if (novoAluno.horario && cenarios.length > 0 && !jaAgendado.has(novoAluno.id)) {
+        const cenarioInicial = cenarios[cicloCenario % cenarios.length];
+        cicloCenario++;
+        agendamentos.push({
+          id: Store.uid(),
+          alunoId: novoAluno.id,
+          cenarioInicialId: cenarioInicial.id,
+          horario: novoAluno.horario,
+          chegou: false,
+          status: 'aguardando'
+        });
+        agendados++;
+      }
     });
 
     Store.setAlunos(alunos);
+    if (agendados > 0) Store.setAgendamentos(agendamentos);
     renderAll();
-    feedback.innerHTML = `<p class="hint" style="margin-top:8px;color:var(--success);">${novos} aluno(s) importado(s). ${ignorados} linha(s) ignorada(s) (vazias ou já cadastradas).</p>`;
+
+    let msg = `${novos} aluno(s) importado(s). ${ignorados} linha(s) ignorada(s) (vazias ou já cadastradas).`;
+    if (cenarios.length === 0 && novos > 0) {
+      msg += ' Cadastre os cenários antes de importar para a agenda ser preenchida automaticamente.';
+    } else if (agendados > 0) {
+      msg += ` ${agendados} aluno(s) adicionados à Agenda automaticamente com o horário da planilha.`;
+    }
+    feedback.innerHTML = `<p class="hint" style="margin-top:8px;color:var(--success);">${msg}</p>`;
   } catch (err) {
     feedback.innerHTML = `<p class="hint" style="margin-top:8px;color:var(--danger);">Não foi possível ler o arquivo. Confirme que é o modelo .xlsx exportado e tente novamente.</p>`;
   }
