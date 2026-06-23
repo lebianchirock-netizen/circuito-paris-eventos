@@ -152,6 +152,7 @@ document.getElementById('import-file').addEventListener('change', async (e) => {
     let novos = 0;
     let ignorados = 0;
     let agendados = 0;
+    let semHorario = 0;
     let cicloCenario = 0;
 
     rows.forEach((row) => {
@@ -179,7 +180,9 @@ document.getElementById('import-file').addEventListener('change', async (e) => {
       novos++;
 
       // Agenda automática: se tem horário e ainda não está agendado, cria a entrada na Agenda
-      if (novoAluno.horario && cenarios.length > 0 && !jaAgendado.has(novoAluno.id)) {
+      if (!novoAluno.horario) {
+        semHorario++;
+      } else if (cenarios.length > 0 && !jaAgendado.has(novoAluno.id)) {
         const cenarioInicial = cenarios[cicloCenario % cenarios.length];
         cicloCenario++;
         agendamentos.push({
@@ -202,7 +205,10 @@ document.getElementById('import-file').addEventListener('change', async (e) => {
     if (cenarios.length === 0 && novos > 0) {
       msg += ' Cadastre os cenários antes de importar para a agenda ser preenchida automaticamente.';
     } else if (agendados > 0) {
-      msg += ` ${agendados} aluno(s) adicionados à Agenda automaticamente com o horário da planilha.`;
+      msg += ` ${agendados} aluno(s) adicionados à Agenda automaticamente.`;
+    }
+    if (semHorario > 0) {
+      msg += ` ${semHorario} aluno(s) sem HORÁRIO preenchido na planilha não foram agendados — adicione manualmente pela Agenda se precisar.`;
     }
     feedback.innerHTML = `<p class="hint" style="margin-top:8px;color:var(--success);">${msg}</p>`;
   } catch (err) {
@@ -251,7 +257,8 @@ function renderAgendaList() {
   const el = document.getElementById('agenda-list');
   const agendamentos = Store.getAgendamentos().slice().sort((a, b) => a.horario.localeCompare(b.horario));
   const alunoPorId = Object.fromEntries(Store.getAlunos().map((a) => [a.id, a]));
-  const cenarioPorId = Object.fromEntries(Store.getCenarios().map((c) => [c.id, c]));
+  const cenarios = Store.getCenarios();
+  const cenarioPorId = Object.fromEntries(cenarios.map((c) => [c.id, c]));
   const ativaPorAluno = Object.fromEntries(Store.getAtribuicoesAtivas().map((a) => [a.alunoId, a]));
 
   if (agendamentos.length === 0) {
@@ -273,11 +280,11 @@ function renderAgendaList() {
   const linhas = agendamentos.map((ag) => {
     const aluno = alunoPorId[ag.alunoId];
     const cenarioPlanejado = cenarioPorId[ag.cenarioInicialId];
-    if (!aluno || !cenarioPlanejado) return '';
     const status = ag.status || 'aguardando';
+    const nomeAluno = aluno ? aluno.nome : 'Aluno removido';
 
     let statusBadge = '';
-    let infoLinha = `${ag.horario} · começa em ${escapeHtml(cenarioPlanejado.nome)}`;
+    let infoLinha = `${ag.horario} · começa em ${cenarioPlanejado ? escapeHtml(cenarioPlanejado.nome) : '<span style="color:var(--danger);">cenário não encontrado, escolha um</span>'}`;
     let acoes = '';
 
     if (status === 'em_circuito') {
@@ -296,9 +303,17 @@ function renderAgendaList() {
       acoes = `<button class="danger-btn" data-id="${ag.id}" data-action="del-agendamento">Remover</button>`;
     } else {
       statusBadge = ag.chegou ? `<span class="pill-chegou"><svg viewBox="0 0 16 16" fill="none"><path d="M3.5 8.2l3 3 6-6.4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>No estúdio</span>` : '';
+      if (cenarios.length > 0) {
+        infoLinha = `${ag.horario} · começa em
+          <select onchange="trocarCenarioAgenda('${ag.id}', this.value)" style="display:inline-block;width:auto;margin:0 0 0 4px;padding:3px 6px;font-size:12.5px;">
+            ${cenarios.map((c) => `<option value="${c.id}" ${c.id === ag.cenarioInicialId ? 'selected' : ''}>${escapeHtml(c.nome)}</option>`).join('')}
+          </select>`;
+      } else {
+        infoLinha = `${ag.horario} · <span style="color:var(--danger);">cadastre um cenário para poder iniciar</span>`;
+      }
       acoes = `
         <button class="secondary" data-id="${ag.id}" data-action="toggle-chegada" style="padding:7px 12px;font-size:13px;">${ag.chegou ? 'Desfazer chegada' : 'Confirmar chegada'}</button>
-        <button class="secondary" data-id="${ag.id}" data-action="iniciar-agendamento" style="padding:7px 12px;font-size:13px;">Iniciar agora</button>
+        <button class="secondary" data-id="${ag.id}" data-action="iniciar-agendamento" style="padding:7px 12px;font-size:13px;${cenarioPlanejado ? '' : 'opacity:0.5;'}" ${cenarioPlanejado ? '' : 'disabled title="Escolha um cenário primeiro"'}>Iniciar agora</button>
         <button class="danger-btn" data-id="${ag.id}" data-action="del-agendamento">Remover</button>`;
     }
 
@@ -306,7 +321,7 @@ function renderAgendaList() {
     <div class="list-row">
       <div>
         <div style="display:flex;align-items:center;gap:8px;">
-          <span style="font-weight:500;">${escapeHtml(aluno.nome)}</span>
+          <span style="font-weight:500;">${escapeHtml(nomeAluno)}</span>
           ${statusBadge}
         </div>
         <div class="hint" style="margin:0;">${infoLinha}</div>
@@ -316,6 +331,15 @@ function renderAgendaList() {
   }).join('');
 
   el.innerHTML = metrics + `<div class="card">${linhas}</div>`;
+}
+
+function trocarCenarioAgenda(agendamentoId, novoCenarioId) {
+  const agendamentos = Store.getAgendamentos();
+  const ag = agendamentos.find((a) => a.id === agendamentoId);
+  if (!ag) return;
+  ag.cenarioInicialId = novoCenarioId;
+  Store.setAgendamentos(agendamentos);
+  renderAgendaList();
 }
 
 function iniciarAgendamento(agendamentoId) {
