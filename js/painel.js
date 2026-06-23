@@ -72,12 +72,11 @@ function renderPainelQueue() {
   const cards = presentes.map((ag) => {
     const aluno = alunoPorId[ag.alunoId];
     const cenario = cenarioPorId[ag.cenarioInicialId];
-    if (!aluno || !cenario) return '';
     const diffMin = minutosAteHorario(ag.horario);
     return `
     <div class="queue-card painel-queue-card ${diffMin < 0 ? 'atrasado' : ''}">
-      <div class="nome">${escapeHtml(aluno.nome)}</div>
-      <div class="info">${ag.horario} · ${escapeHtml(cenario.nome)}</div>
+      <div class="nome">${escapeHtml(aluno ? aluno.nome : 'Aluno removido')}</div>
+      <div class="info">${ag.horario} · ${cenario ? escapeHtml(cenario.nome) : 'cenário não definido'}</div>
       <span class="badge ok">Aguardando</span>
     </div>`;
   }).join('');
@@ -102,7 +101,14 @@ function renderPainelCircuito() {
   const cards = ativas.map((a) => {
     const aluno = alunoPorId[a.alunoId];
     const cenarioAtual = cenarioPorId[a.cenarioAtualId];
-    if (!aluno || !cenarioAtual) return '';
+    const nomeAluno = aluno ? aluno.nome : 'Aluno removido';
+    if (!cenarioAtual) {
+      return `
+      <div class="card aluno-card">
+        <p class="nome" style="font-weight:600;margin:0 0 4px;">${escapeHtml(nomeAluno)}</p>
+        <p class="estimate" style="color:var(--danger);margin:0;">Cenário não encontrado — ajuste pela Agenda no painel de controle.</p>
+      </div>`;
+    }
 
     const visitados = a.visitados || [a.cenarioAtualId];
     const duracaoSeg = cenarioAtual.duracaoMin * 60;
@@ -126,7 +132,7 @@ function renderPainelCircuito() {
           <div class="ring-center"><div class="timer">${formatTempo(restanteSeg)}</div></div>
         </div>
         <div class="aluno-info">
-          <p class="nome">${escapeHtml(aluno.nome)}</p>
+          <p class="nome">${escapeHtml(nomeAluno)}</p>
           <p class="cenario">${escapeHtml(cenarioAtual.nome)}</p>
           ${status === 'late' ? '<span class="badge late">Atrasado</span>' : status === 'warn' ? '<span class="badge warn">Acabando</span>' : '<span class="badge ok">No tempo</span>'}
         </div>
