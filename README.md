@@ -131,6 +131,24 @@ alter table alunos add column if not exists confirmado text;
 alter table alunos add column if not exists observacao text;
 ```
 
+## Importação já preenche a Agenda
+
+Ao importar a planilha, quem tiver a coluna HORÁRIO preenchida entra
+direto na Agenda (status "Aguardando"), sem precisar cadastrar nome e
+horário de novo manualmente. Como a planilha não tem uma coluna de
+"cenário inicial", o app distribui os alunos entre os cenários já
+cadastrados em sequência (round-robin), para não empilhar todo mundo no
+mesmo cenário — você pode trocar o cenário de cada um depois, removendo e
+adicionando de novo pela Agenda se precisar ajustar. Por isso, **cadastre
+os cenários antes de importar a planilha** — sem cenários cadastrados, os
+alunos são importados normalmente, mas ninguém entra na Agenda
+automaticamente (o app avisa isso na mensagem de importação).
+
+Também corrigi um bug: como a coluna HORÁRIO do Excel é formatada como
+horário de verdade, ela estava sendo lida como um número decimal estranho
+em vez de "08:00". Já está corrigido — reimporte a planilha se já tinha
+importado antes dessa correção e os horários ficaram errados.
+
 ## Senha de administrador
 
 O painel de controle (`index.html`) agora pede uma senha antes de mostrar
