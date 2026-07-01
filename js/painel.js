@@ -57,10 +57,11 @@ function formatContagem(diffMin) {
 
 function renderPainelQueue() {
   const el = document.getElementById('painel-queue');
-  const alunoPorId = Object.fromEntries(Store.getAlunos().map((a) => [a.id, a]));
-  const cenarioPorId = Object.fromEntries(Store.getCenarios().map((c) => [c.id, c]));
+  const { agendamentos, alunos, cenarios } = getDadosPainel();
+  const alunoPorId = Object.fromEntries(alunos.map((a) => [a.id, a]));
+  const cenarioPorId = Object.fromEntries(cenarios.map((c) => [c.id, c]));
 
-  const presentes = Store.getAgendamentos()
+  const presentes = agendamentos
     .filter((ag) => ag.chegou && (ag.status || 'aguardando') === 'aguardando')
     .slice()
     .sort((a, b) => (a.horario || '').localeCompare(b.horario || ''));
@@ -86,9 +87,9 @@ function renderPainelQueue() {
 }
 
 function renderPainelCircuito() {
-  const ativas = Store.getAtribuicoesAtivas();
-  const cenarios = Store.getCenarios();
-  const alunos = Store.getAlunos();
+  const ativas = getDadosPainel().atribuicoes;
+  const cenarios = getDadosPainel().cenarios;
+  const alunos = getDadosPainel().alunos;
   const el = document.getElementById('painel-circuito');
 
   if (ativas.length === 0) {
@@ -154,32 +155,82 @@ function renderPainel() {
   safe(renderPainelCircuito);
 }
 
-// Busca dados frescos do banco e redesenha — garante atualização mesmo sem Realtime
-async function refreshEDesenha() {
+// Cache local do painel — preenchido direto do Supabase a cada 2s
+// independente de qualquer método do storage.js
+const painelCache = { agendamentos: null, atribuicoes: null, alunos: null, cenarios: null };
+let painelClient = null;
+
+function getPainelClient() {
+  if (painelClient) return painelClient;
   try {
-    await Store.refreshAll();
-  } catch (e) { /* ignora erro de rede */ }
-  safe(renderPainel);
+    if (typeof supabase !== 'undefined' && typeof SUPABASE_URL === 'string' && !SUPABASE_URL.includes('COLE_AQUI')) {
+      painelClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    }
+  } catch (e) {}
+  return painelClient;
+}
+
+async function buscarDadosSupabase() {
+  const client = getPainelClient();
+  if (!client) return false;
+  try {
+    const [resAg, resAt, resAl, resCe] = await Promise.all([
+      client.from('agendamentos').select('*'),
+      client.from('atribuicoes_ativas').select('*'),
+      client.from('alunos').select('*'),
+      client.from('cenarios').select('*'),
+    ]);
+    if (!resAg.error) painelCache.agendamentos = resAg.data;
+    if (!resAt.error) painelCache.atribuicoes = resAt.data;
+    if (!resAl.error) painelCache.alunos = resAl.data;
+    if (!resCe.error) painelCache.cenarios = resCe.data;
+    return true;
+  } catch (e) { return false; }
+}
+
+// Conversores de linha do banco para objeto do app
+function agFromRow(r) { return { id: r.id, alunoId: r.aluno_id, cenarioInicialId: r.cenario_inicial_id, horario: r.horario || '', chegou: r.chegou, status: r.status || 'aguardando' }; }
+function atFromRow(r) { return { id: r.id, alunoId: r.aluno_id, cenarioAtualId: r.cenario_atual_id, visitados: r.visitados || [], inicioPosicaoAtual: r.inicio_posicao_atual }; }
+function alFromRow(r) { return { id: r.id, nome: r.nome, curso: r.curso }; }
+function ceFromRow(r) { return { id: r.id, nome: r.nome, duracaoMin: r.duracao_min }; }
+
+function getDadosPainel() {
+  // Tenta usar o painelCache (dados frescos do banco)
+  if (painelCache.agendamentos !== null) {
+    return {
+      agendamentos: painelCache.agendamentos.map(agFromRow),
+      atribuicoes: painelCache.atribuicoes.map(atFromRow),
+      alunos: painelCache.alunos.map(alFromRow),
+      cenarios: painelCache.cenarios.map(ceFromRow),
+    };
+  }
+  // Fallback: usa o cache do Store (localStorage ou Supabase Realtime)
+  return {
+    agendamentos: Store.getAgendamentos(),
+    atribuicoes: Store.getAtribuicoesAtivas(),
+    alunos: Store.getAlunos(),
+    cenarios: Store.getCenarios(),
+  };
 }
 
 safe(tickClock);
 safe(renderSyncStatus);
 safe(renderPainel);
 
-// Primeiro carregamento com dados do banco
-refreshEDesenha();
+// Busca inicial + atualização a cada 2s
+async function loopAtualizacao() {
+  await buscarDadosSupabase();
+  safe(renderPainel);
+}
+loopAtualizacao();
+setInterval(loopAtualizacao, 2000);
 
-// Atualiza relógio e timers a cada 1s
+// Relógio e timers a cada 1s
 setInterval(() => {
   safe(tickClock);
   safe(renderSyncStatus);
   safe(renderPainel);
 }, 1000);
-
-// Busca dados frescos do Supabase a cada 2s (fallback robusto ao Realtime)
-setInterval(() => {
-  refreshEDesenha();
-}, 2000);
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
