@@ -154,24 +154,32 @@ function renderPainel() {
   safe(renderPainelCircuito);
 }
 
-Store.onChange(() => safe(renderPainel));
-
-// Polling de fallback: busca dados frescos do Supabase a cada 2s
-// para garantir que o painel atualize mesmo se o realtime falhar
-setInterval(() => {
-  if (Store.isRealtime()) {
-    Store.refreshAll().then(() => safe(renderPainel)).catch(() => {});
-  }
-}, 2000);
+// Busca dados frescos do banco e redesenha — garante atualização mesmo sem Realtime
+async function refreshEDesenha() {
+  try {
+    await Store.refreshAll();
+  } catch (e) { /* ignora erro de rede */ }
+  safe(renderPainel);
+}
 
 safe(tickClock);
 safe(renderSyncStatus);
 safe(renderPainel);
+
+// Primeiro carregamento com dados do banco
+refreshEDesenha();
+
+// Atualiza relógio e timers a cada 1s
 setInterval(() => {
   safe(tickClock);
   safe(renderSyncStatus);
   safe(renderPainel);
 }, 1000);
+
+// Busca dados frescos do Supabase a cada 2s (fallback robusto ao Realtime)
+setInterval(() => {
+  refreshEDesenha();
+}, 2000);
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
