@@ -9,4 +9,4 @@
 // da equipe isso já resolve bem; para algo à prova de acesso técnico
 // seria necessário um login real via Supabase Auth.
 
-const ADMIN_PASSWORD = paris4100;
+const ADMIN_PASSWORD = 'paris2026';
