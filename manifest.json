@@ -1,0 +1,18 @@
+{
+  "name": "Circuito de Cenários",
+  "short_name": "Circuito",
+  "description": "Controle de tempo dos alunos no circuito de cenários do estúdio",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#F6F4FB",
+  "theme_color": "#7C1FD6",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
