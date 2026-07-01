@@ -8,5 +8,5 @@
 // funcionando normalmente, só que salvando os dados apenas neste
 // dispositivo (sem sincronizar com outros).
 
-const SUPABASE_URL = 'COLE_AQUI_A_PROJECT_URL';
-const SUPABASE_ANON_KEY = 'COLE_AQUI_A_ANON_KEY';
+const SUPABASE_URL = 'https://tkzfingyyboyrrgvkvvx.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_ICSg7S7ys-dX6V0bocbo9g_kA30npTu';
