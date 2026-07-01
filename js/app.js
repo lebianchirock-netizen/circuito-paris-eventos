@@ -805,14 +805,21 @@ function renderAll() {
   safe(renderHistorico);
 }
 
+function selectAberto() {
+  const el = document.activeElement;
+  return el && el.tagName === 'SELECT';
+}
+
 safe(tickClock);
 safe(renderSyncStatus);
 safe(renderAll);
 setInterval(() => {
   safe(tickClock);
   safe(renderSyncStatus);
-  safe(renderDashboard);
-  safe(renderAgendaList);
+  if (!selectAberto()) {
+    safe(renderDashboard);
+    safe(renderAgendaList);
+  }
 }, 1000);
 
 if ('serviceWorker' in navigator) {

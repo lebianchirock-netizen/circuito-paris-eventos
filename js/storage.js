@@ -186,6 +186,7 @@ const Store = {
   getConnectionStatus: () => connectionStatus,
   isRealtime: () => IS_CONFIGURED,
   onChange: (cb) => { onChangeCallback = cb; },
+  refreshAll: () => Promise.all(Object.keys(TABLES).map((key) => fetchTable(key))),
 
   uid
 };

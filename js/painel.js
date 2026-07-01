@@ -156,6 +156,14 @@ function renderPainel() {
 
 Store.onChange(() => safe(renderPainel));
 
+// Polling de fallback: busca dados frescos do Supabase a cada 2s
+// para garantir que o painel atualize mesmo se o realtime falhar
+setInterval(() => {
+  if (Store.isRealtime()) {
+    Store.refreshAll().then(() => safe(renderPainel)).catch(() => {});
+  }
+}, 2000);
+
 safe(tickClock);
 safe(renderSyncStatus);
 safe(renderPainel);
